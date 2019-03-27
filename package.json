@@ -1,0 +1,23 @@
+{
+  "name": "nest-swagger",
+  "version": "0.0.1",
+  "description": "generate swagger for nestjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vellengs/nest-swagger.git"
+  },
+  "keywords": [
+    "nestjs",
+    "swagger"
+  ],
+  "author": "vellengs",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vellengs/nest-swagger/issues"
+  },
+  "homepage": "https://github.com/vellengs/nest-swagger#readme"
+}
