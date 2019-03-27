@@ -22,12 +22,15 @@ function resolveType(typeNode, genericTypeMap) {
     }
     if (typeNode.kind === ts.SyntaxKind.ArrayType) {
         const arrayType = typeNode;
+        const elementType = resolveType(arrayType.elementType, genericTypeMap);
         return {
-            elementType: resolveType(arrayType.elementType, genericTypeMap),
+            elementType,
             typeName: 'array'
         };
     }
-    if ((typeNode.kind === ts.SyntaxKind.UnionType) || (typeNode.kind === ts.SyntaxKind.AnyKeyword) || (typeNode.kind === ts.SyntaxKind.ObjectKeyword)) {
+    if (typeNode.kind === ts.SyntaxKind.UnionType ||
+        typeNode.kind === ts.SyntaxKind.AnyKeyword ||
+        typeNode.kind === ts.SyntaxKind.ObjectKeyword) {
         return { typeName: 'object' };
     }
     if (typeNode.kind === ts.SyntaxKind.TypeLiteral) {
@@ -56,8 +59,9 @@ function resolveType(typeNode, genericTypeMap) {
     }
     if (typeName === 'Array') {
         typeReference = typeReference.typeArguments[0];
+        const elementType = resolveType(typeReference, genericTypeMap);
         return {
-            elementType: resolveType(typeReference, genericTypeMap),
+            elementType,
             typeName: 'array'
         };
     }
@@ -74,7 +78,12 @@ function resolveType(typeNode, genericTypeMap) {
         const typeT = typeReference.typeArguments;
         referenceType = getReferenceType(typeReference.typeName, genericTypeMap, typeT);
         typeName = resolveSimpleTypeName(typeReference.typeName);
-        if (['NewResource', 'RequestAccepted', 'MovedPermanently', 'MovedTemporarily'].indexOf(typeName) >= 0) {
+        if ([
+            'NewResource',
+            'RequestAccepted',
+            'MovedPermanently',
+            'MovedTemporarily'
+        ].indexOf(typeName) >= 0) {
             referenceType.typeName = typeName;
             referenceType.typeArgument = resolveType(typeT[0], genericTypeMap);
         }
@@ -164,7 +173,7 @@ function getEnumerateType(typeNode) {
         enumMembers: enumDeclaration.members.map((member, index) => {
             return getEnumValue(member) || index;
         }),
-        typeName: 'enum',
+        typeName: 'enum'
     };
 }
 function getLiteralType(typeNode) {
@@ -173,7 +182,7 @@ function getLiteralType(typeNode) {
         .filter(node => node.kind === ts.SyntaxKind.TypeAliasDeclaration)
         .filter(node => {
         const innerType = node.type;
-        return innerType.kind === ts.SyntaxKind.UnionType && innerType.types;
+        return (innerType.kind === ts.SyntaxKind.UnionType && innerType.types);
     })
         .filter(node => node.name.text === literalName);
     if (!literalTypes.length) {
@@ -184,8 +193,16 @@ function getLiteralType(typeNode) {
     }
     const unionTypes = literalTypes[0].type.types;
     return {
-        enumMembers: unionTypes.map((unionNode) => unionNode.literal.text),
-        typeName: 'enum',
+        enumMembers: unionTypes.map((unionNode) => {
+            if (unionNode && unionNode.literal) {
+                return unionNode.literal.text;
+            }
+            else {
+                console.log('unionNode', unionNode);
+                return '';
+            }
+        }),
+        typeName: 'enum'
     };
 }
 function getInlineObjectType(typeNode) {
@@ -213,12 +230,23 @@ function getReferenceType(type, genericTypeMap, genericTypes) {
         }
         inProgressTypes[typeNameWithGenerics] = true;
         const modelTypeDeclaration = getModelTypeDeclaration(type);
+        if (!modelTypeDeclaration) {
+            if (genericTypeMap) {
+                const typeReference = genericTypeMap.values().next().value;
+                return getReferenceType(typeReference.typeName);
+            }
+            return {
+                typeName: 'Generic~' + type.getText(),
+                properties: [],
+                description: ''
+            };
+        }
         const properties = getModelTypeProperties(modelTypeDeclaration, genericTypes);
         const additionalProperties = getModelTypeAdditionalProperties(modelTypeDeclaration);
         const referenceType = {
             description: getModelDescription(modelTypeDeclaration),
             properties: properties,
-            typeName: typeNameWithGenerics,
+            typeName: typeNameWithGenerics
         };
         if (additionalProperties && additionalProperties.length) {
             referenceType.additionalProperties = additionalProperties;
@@ -249,7 +277,9 @@ function resolveFqTypeName(type) {
         return type.text;
     }
     const qualifiedType = type;
-    return resolveFqTypeName(qualifiedType.left) + '.' + qualifiedType.right.text;
+    return (resolveFqTypeName(qualifiedType.left) +
+        '.' +
+        qualifiedType.right.text);
 }
 function resolveSimpleTypeName(type) {
     if (type.kind === ts.SyntaxKind.Identifier) {
@@ -262,7 +292,7 @@ function getTypeName(typeName, genericTypes) {
     if (!genericTypes || !genericTypes.length) {
         return typeName;
     }
-    return typeName + genericTypes.map(t => getAnyTypeName(t)).join('');
+    return typeName + '$' + genericTypes.map(t => getAnyTypeName(t)).join('');
 }
 function getAnyTypeName(typeNode) {
     const primitiveType = syntaxKindMap[typeNode.kind];
@@ -273,7 +303,8 @@ function getAnyTypeName(typeNode) {
         const arrayType = typeNode;
         return getAnyTypeName(arrayType.elementType) + 'Array';
     }
-    if ((typeNode.kind === ts.SyntaxKind.UnionType) || (typeNode.kind === ts.SyntaxKind.AnyKeyword)) {
+    if (typeNode.kind === ts.SyntaxKind.UnionType ||
+        typeNode.kind === ts.SyntaxKind.AnyKeyword) {
         return 'object';
     }
     if (typeNode.kind !== ts.SyntaxKind.TypeReference) {
@@ -292,7 +323,7 @@ function createCircularDependencyResolver(typeName) {
     const referenceType = {
         description: '',
         properties: new Array(),
-        typeName: typeName,
+        typeName: typeName
     };
     metadataGenerator_1.MetadataGenerator.current.onFinish(referenceTypes => {
         const realReferenceType = referenceTypes[typeName];
@@ -311,7 +342,8 @@ function nodeIsUsable(node) {
         case ts.SyntaxKind.ClassDeclaration:
         case ts.SyntaxKind.TypeAliasDeclaration:
             return true;
-        default: return false;
+        default:
+            return false;
     }
 }
 function resolveLeftmostIdentifier(type) {
@@ -329,8 +361,7 @@ function getModelTypeDeclaration(type) {
     const typeName = type.kind === ts.SyntaxKind.Identifier
         ? type.text
         : type.right.text;
-    const modelTypes = statements
-        .filter(node => {
+    const modelTypes = statements.filter(node => {
         if (!nodeIsUsable(node)) {
             return false;
         }
@@ -338,16 +369,19 @@ function getModelTypeDeclaration(type) {
         return modelTypeDeclaration.name.text === typeName;
     });
     if (!modelTypes.length) {
-        throw new Error(`No matching model found for referenced type ${typeName}`);
+        return null;
     }
-    return modelTypes[0];
+    const modelType = modelTypes[0];
+    return modelType;
 }
 function getModelTypeProperties(node, genericTypes) {
-    if (node.kind === ts.SyntaxKind.TypeLiteral || node.kind === ts.SyntaxKind.InterfaceDeclaration) {
+    if (node.kind === ts.SyntaxKind.TypeLiteral ||
+        node.kind === ts.SyntaxKind.InterfaceDeclaration) {
         const interfaceDeclaration = node;
         return interfaceDeclaration.members
             .filter(member => {
-            if (member.type && member.type.kind === ts.SyntaxKind.FunctionType) {
+            if (member.type &&
+                member.type.kind === ts.SyntaxKind.FunctionType) {
                 return false;
             }
             return member.kind === ts.SyntaxKind.PropertySignature;
@@ -359,7 +393,10 @@ function getModelTypeProperties(node, genericTypes) {
                 throw new Error('No valid type found for property declaration.');
             }
             let aType = propertyDeclaration.type;
-            if (aType.kind === ts.SyntaxKind.TypeReference && genericTypes && genericTypes.length && node.typeParameters) {
+            if (aType.kind === ts.SyntaxKind.TypeReference &&
+                genericTypes &&
+                genericTypes.length &&
+                node.typeParameters) {
                 const typeParams = _.map(node.typeParameters, (typeParam) => {
                     return typeParam.name.text;
                 });
@@ -369,7 +406,8 @@ function getModelTypeProperties(node, genericTypes) {
                     typeIdentifierName = typeIdentifier.text;
                 }
                 else {
-                    typeIdentifierName = typeIdentifier.right.text;
+                    typeIdentifierName = typeIdentifier.right
+                        .text;
                 }
                 const indexOfType = _.indexOf(typeParams, typeIdentifierName);
                 if (indexOfType >= 0) {
@@ -399,24 +437,34 @@ function getModelTypeProperties(node, genericTypes) {
     if (classConstructor && classConstructor.parameters) {
         properties = properties.concat(classConstructor.parameters.filter(parameter => hasPublicConstructorModifier(parameter)));
     }
-    return properties
-        .map(declaration => {
+    return properties.map(declaration => {
         const identifier = declaration.name;
         if (!declaration.type) {
             throw new Error('No valid type found for property declaration.');
         }
+        const name = identifier.text;
+        const description = getNodeDescription(declaration);
+        const typeNode = resolveTypeParameter(declaration.type, classDeclaration, genericTypes);
+        const genericTypeMap = new Map();
+        (genericTypes || []).forEach((t) => {
+            genericTypeMap.set(t.typeName.text, t);
+        });
+        const type = resolveType(typeNode, genericTypeMap);
         return {
-            description: getNodeDescription(declaration),
-            name: identifier.text,
+            description,
+            name,
             required: !declaration.questionToken,
-            type: resolveType(resolveTypeParameter(declaration.type, classDeclaration, genericTypes))
+            type
         };
     });
 }
 function resolveTypeParameter(type, classDeclaration, genericTypes) {
-    if (genericTypes && classDeclaration.typeParameters && classDeclaration.typeParameters.length) {
+    if (genericTypes &&
+        classDeclaration.typeParameters &&
+        classDeclaration.typeParameters.length) {
         for (let i = 0; i < classDeclaration.typeParameters.length; i++) {
-            if (type.typeName && classDeclaration.typeParameters[i].name.text === type.typeName.text) {
+            if (type.typeName &&
+                classDeclaration.typeParameters[i].name.text === type.typeName.text) {
                 return genericTypes[i];
             }
         }
@@ -430,7 +478,7 @@ function getModelTypeAdditionalProperties(node) {
             .filter(member => member.kind === ts.SyntaxKind.IndexSignature)
             .map((member) => {
             const indexSignatureDeclaration = member;
-            const indexType = resolveType(indexSignatureDeclaration.parameters[0].type);
+            const indexType = resolveType((indexSignatureDeclaration.parameters[0].type));
             if (indexType.typeName !== 'string') {
                 throw new Error(`Only string indexers are supported. Found ${indexType.typeName}.`);
             }
@@ -445,14 +493,17 @@ function getModelTypeAdditionalProperties(node) {
     return undefined;
 }
 function hasPublicMemberModifier(node) {
-    return !node.modifiers || node.modifiers.every(modifier => {
-        return modifier.kind !== ts.SyntaxKind.ProtectedKeyword && modifier.kind !== ts.SyntaxKind.PrivateKeyword;
-    });
+    return (!node.modifiers ||
+        node.modifiers.every(modifier => {
+            return (modifier.kind !== ts.SyntaxKind.ProtectedKeyword &&
+                modifier.kind !== ts.SyntaxKind.PrivateKeyword);
+        }));
 }
 function hasPublicConstructorModifier(node) {
-    return node.modifiers && node.modifiers.some(modifier => {
-        return modifier.kind === ts.SyntaxKind.PublicKeyword;
-    });
+    return (node.modifiers &&
+        node.modifiers.some(modifier => {
+            return modifier.kind === ts.SyntaxKind.PublicKeyword;
+        }));
 }
 function getInheritedProperties(modelTypeDeclaration, genericTypes) {
     const properties = new Array();
@@ -473,11 +524,10 @@ function getInheritedProperties(modelTypeDeclaration, genericTypes) {
                 type = metadataGenerator_1.MetadataGenerator.current.getInterfaceDeclaration(t.expression.getText());
             }
             const baseEntityName = t.expression;
-            const parentGenerictypes = resolveTypeArguments(modelTypeDeclaration, genericTypes);
-            const genericTypeMap = resolveTypeArguments(type, t.typeArguments, parentGenerictypes);
+            const parentGenericTypes = resolveTypeArguments(modelTypeDeclaration, genericTypes);
+            const genericTypeMap = resolveTypeArguments(type, t.typeArguments, parentGenericTypes);
             const subClassGenericTypes = getSubClassGenericTypes(genericTypeMap, t.typeArguments);
-            getReferenceType(baseEntityName, genericTypeMap, subClassGenericTypes).properties
-                .forEach(property => properties.push(property));
+            getReferenceType(baseEntityName, genericTypeMap, subClassGenericTypes).properties.forEach(property => properties.push(property));
         });
     });
     return properties;
@@ -560,7 +610,11 @@ function getCommonPrimitiveAndArrayUnionType(typeNode) {
         const types = union.types.map(t => resolveType(t));
         const arrType = types.find(t => t.typeName === 'array');
         const primitiveType = types.find(t => t.typeName !== 'array');
-        if (types.length === 2 && arrType && arrType.elementType && primitiveType && arrType.elementType.typeName === primitiveType.typeName) {
+        if (types.length === 2 &&
+            arrType &&
+            arrType.elementType &&
+            primitiveType &&
+            arrType.elementType.typeName === primitiveType.typeName) {
             return arrType;
         }
     }
