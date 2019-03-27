@@ -206,6 +206,24 @@
 					}
 				]
 			}
+		},
+		"/": {
+			"get": {
+				"operationId": "DemoExample",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"schema": {
+							"type": "string"
+						}
+					}
+				},
+				"description": "",
+				"parameters": []
+			}
 		}
 	},
 	"swagger": "2.0",
