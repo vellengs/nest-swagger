@@ -5,3 +5,12 @@ package-lock.json
 tslint.json
 tsconfig.json
 .prettierrc
+!dist/**
+!doc/**
+.travis.yml
+/.vscode
+coverage
+.DS_Store 
+.nyc_output
+tsconfig.json
+test

@@ -2,9 +2,9 @@
   "name": "nest-swagger",
   "version": "0.0.1",
   "description": "generate swagger for nestjs",
-  "main": "index.js",
+  "main": "./dist/swagger/decorators.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "format": "prettier lib/**/*.ts --write",
     "precommit": "lint-staged",
     "prepublish:next": "npm run build",
@@ -13,6 +13,7 @@
     "publish:npm": "npm publish --access public"
   },
   "dependencies": {
+    "argparse": "^1.0.10",
     "lodash": "4.17.11",
     "merge": "^1.2.1",
     "path-to-regexp": "3.0.0",
@@ -22,6 +23,7 @@
     "@nestjs/common": "6.0.1",
     "@nestjs/core": "6.0.1",
     "@nestjs/platform-express": "^6.0.2",
+    "@types/argparse": "^1.0.36",
     "@types/mocha": "^5.2.6",
     "@types/node": "11.11.3",
     "chai": "^4.2.0",
@@ -57,5 +59,12 @@
   "bugs": {
     "url": "https://github.com/vellengs/nest-swagger/issues"
   },
-  "homepage": "https://github.com/vellengs/nest-swagger#readme"
+  "homepage": "https://github.com/vellengs/nest-swagger#readme",
+  "bin": {
+    "swaggerGen": "dist/cli.js"
+  },
+  "directories": {
+    "lib": "dist",
+    "doc": "doc"
+  }
 }

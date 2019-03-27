@@ -59,10 +59,10 @@ definitions:
         required:
             - name
 info:
-    description: 'a description'
+    description: 'test description'
     license:
         name: MIT
-    title: 'Typescript-rest Test API'
+    title: 'Nest Swagger API'
     version: '1.0'
 paths:
     /app/:
