@@ -22,17 +22,18 @@ parser.addArgument(['-c', '--config'], {
 parser.addArgument(['-t', '--tsconfig'], {
     action: 'storeTrue',
     defaultValue: false,
-    help: 'Load tsconfig.json file',
+    help: 'Load tsconfig.json file'
 });
 parser.addArgument(['-p', '--tsconfig_path'], {
-    help: 'The tsconfig file (tsconfig.json) path. Default to {cwd}/tsconfig.json.',
+    help: 'The tsconfig file (tsconfig.json) path. Default to {cwd}/tsconfig.json.'
 });
 const parameters = parser.parseArgs();
 const config = getConfig(parameters.config);
 const compilerOptions = getCompilerOptions(parameters.tsconfig, parameters.tsconfig_path);
 const swaggerConfig = validateSwaggerConfig(config.swagger);
 const metadata = new metadataGenerator_1.MetadataGenerator(swaggerConfig.entryFile, compilerOptions).generate();
-new generator_1.SpecGenerator(metadata, swaggerConfig).generate(swaggerConfig.outputDirectory, swaggerConfig.yaml)
+new generator_1.SpecGenerator(metadata, swaggerConfig)
+    .generate(swaggerConfig.outputDirectory, swaggerConfig.yaml)
     .then(() => {
     console.info('Generation completed.');
 })

@@ -48,25 +48,6 @@
 				"mobile"
 			]
 		},
-		"ResultListUser": {
-			"description": "",
-			"properties": {
-				"size": {
-					"type": "number",
-					"format": "double",
-					"description": ""
-				},
-				"type": {
-					"type": "string",
-					"description": ""
-				}
-			},
-			"type": "object",
-			"required": [
-				"size",
-				"type"
-			]
-		},
 		"User": {
 			"description": "",
 			"properties": {
@@ -78,6 +59,50 @@
 			"type": "object",
 			"required": [
 				"name"
+			]
+		},
+		"Query": {
+			"description": "",
+			"properties": {
+				"size": {
+					"type": "number",
+					"format": "double",
+					"description": ""
+				},
+				"index": {
+					"type": "number",
+					"format": "double",
+					"description": ""
+				}
+			},
+			"type": "object",
+			"required": [
+				"size",
+				"index"
+			]
+		},
+		"ResultList$User": {
+			"description": "",
+			"properties": {
+				"list": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/User"
+					},
+					"description": ""
+				},
+				"count": {
+					"type": "number",
+					"format": "double",
+					"description": ""
+				},
+				"query": {
+					"$ref": "#/definitions/Query"
+				}
+			},
+			"type": "object",
+			"required": [
+				"list"
 			]
 		}
 	},
@@ -147,7 +172,7 @@
 					"200": {
 						"description": "Ok",
 						"schema": {
-							"$ref": "#/definitions/ResultListUser"
+							"$ref": "#/definitions/ResultList$User"
 						}
 					}
 				},

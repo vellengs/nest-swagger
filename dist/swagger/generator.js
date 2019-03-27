@@ -82,17 +82,21 @@ class SpecGenerator {
         const definitions = {};
         Object.keys(this.metadata.referenceTypes).map(typeName => {
             const referenceType = this.metadata.referenceTypes[typeName];
-            definitions[referenceType.typeName] = {
-                description: referenceType.description,
-                properties: this.buildProperties(referenceType.properties),
-                type: 'object'
-            };
-            const requiredFields = referenceType.properties.filter(p => p.required).map(p => p.name);
-            if (requiredFields && requiredFields.length) {
-                definitions[referenceType.typeName].required = requiredFields;
-            }
-            if (referenceType.additionalProperties) {
-                definitions[referenceType.typeName].additionalProperties = this.buildAdditionalProperties(referenceType.additionalProperties);
+            if (!referenceType.typeName.includes('Generic~')) {
+                definitions[referenceType.typeName] = {
+                    description: referenceType.description,
+                    properties: this.buildProperties(referenceType.properties),
+                    type: 'object'
+                };
+                const requiredFields = referenceType.properties
+                    .filter(p => p.required)
+                    .map(p => p.name);
+                if (requiredFields && requiredFields.length) {
+                    definitions[referenceType.typeName].required = requiredFields;
+                }
+                if (referenceType.additionalProperties) {
+                    definitions[referenceType.typeName].additionalProperties = this.buildAdditionalProperties(referenceType.additionalProperties);
+                }
             }
         });
         return definitions;
@@ -101,7 +105,7 @@ class SpecGenerator {
         const paths = {};
         this.metadata.controllers.forEach(controller => {
             controller.methods.forEach(method => {
-                const path = pathUtil.posix.join('/', (controller.path ? controller.path : ''), method.path);
+                const path = pathUtil.posix.join('/', controller.path ? controller.path : '', method.path);
                 paths[path] = paths[path] || {};
                 method.consumes = _.union(controller.consumes, method.consumes);
                 method.produces = _.union(controller.produces, method.produces);
@@ -113,7 +117,7 @@ class SpecGenerator {
         return paths;
     }
     buildPathMethod(controllerName, method, pathObject) {
-        const pathMethod = pathObject[method.method] = this.buildOperation(controllerName, method);
+        const pathMethod = (pathObject[method.method] = this.buildOperation(controllerName, method));
         pathMethod.description = method.description;
         if (method.summary) {
             pathMethod.summary = method.summary;
@@ -131,10 +135,10 @@ class SpecGenerator {
         }
         this.handleMethodConsumes(method, pathMethod);
         pathMethod.parameters = method.parameters
-            .filter(p => (p.in !== 'param'))
+            .filter(p => p.in !== 'param')
             .map(p => this.buildParameter(p));
         method.parameters
-            .filter(p => (p.in === 'param'))
+            .filter(p => p.in === 'param')
             .forEach(p => {
             pathMethod.parameters.push(this.buildParameter({
                 description: p.description,
@@ -161,8 +165,8 @@ class SpecGenerator {
         if (method.consumes.length) {
             pathMethod.consumes = method.consumes;
         }
-        if ((!pathMethod.consumes || !pathMethod.consumes.length)) {
-            if (method.parameters.some(p => (p.in === 'formData' && p.type.typeName === 'file'))) {
+        if (!pathMethod.consumes || !pathMethod.consumes.length) {
+            if (method.parameters.some(p => p.in === 'formData' && p.type.typeName === 'file')) {
                 pathMethod.consumes = pathMethod.consumes || [];
                 pathMethod.consumes.push('multipart/form-data');
             }
@@ -177,7 +181,7 @@ class SpecGenerator {
         }
     }
     hasFormParams(method) {
-        return method.parameters.find(p => (p.in === 'formData'));
+        return method.parameters.find(p => p.in === 'formData');
     }
     supportsBodyParameters(method) {
         return ['post', 'put', 'patch'].some(m => m === method);
@@ -202,7 +206,8 @@ class SpecGenerator {
         if (parameterType.items) {
             swaggerParameter.items = parameterType.items;
             if (parameter.collectionFormat || this.config.collectionFormat) {
-                swaggerParameter.collectionFormat = parameter.collectionFormat || this.config.collectionFormat;
+                swaggerParameter.collectionFormat =
+                    parameter.collectionFormat || this.config.collectionFormat;
             }
         }
         if (parameterType.format) {
@@ -256,17 +261,22 @@ class SpecGenerator {
                 methodReturnTypes.add(this.getMimeType(swaggerType));
             }
             if (res.examples) {
-                operation.responses[res.status]['examples'] = { 'application/json': res.examples };
+                operation.responses[res.status]['examples'] = {
+                    'application/json': res.examples
+                };
             }
         });
         this.handleMethodProduces(method, operation, methodReturnTypes);
         return operation;
     }
     getMimeType(swaggerType) {
-        if (swaggerType.$ref || swaggerType.type === 'array' || swaggerType.type === 'object') {
+        if (swaggerType.$ref ||
+            swaggerType.type === 'array' ||
+            swaggerType.type === 'object') {
             return 'application/json';
         }
-        else if (swaggerType.type === 'string' && swaggerType.format === 'binary') {
+        else if (swaggerType.type === 'string' &&
+            swaggerType.format === 'binary') {
             return 'application/octet-stream';
         }
         else {
@@ -283,7 +293,8 @@ class SpecGenerator {
     }
     getOperationId(controllerName, methodName) {
         const controllerNameWithoutSuffix = controllerName.replace(new RegExp('Controller$'), '');
-        return `${controllerNameWithoutSuffix}${methodName.charAt(0).toUpperCase() + methodName.substr(1)}`;
+        return `${controllerNameWithoutSuffix}${methodName.charAt(0).toUpperCase() +
+            methodName.substr(1)}`;
     }
     getSwaggerType(type) {
         const swaggerType = this.getSwaggerTypeForPrimitiveType(type);
@@ -320,18 +331,24 @@ class SpecGenerator {
             long: { type: 'integer', format: 'int64' },
             object: { type: 'object' },
             string: { type: 'string' },
-            void: { type: 'void' },
+            void: { type: 'void' }
         };
         return typeMap[type.typeName];
     }
     getSwaggerTypeForObjectType(objectType) {
-        return { type: 'object', properties: this.buildProperties(objectType.properties) };
+        return {
+            type: 'object',
+            properties: this.buildProperties(objectType.properties)
+        };
     }
     getSwaggerTypeForArrayType(arrayType) {
         return { type: 'array', items: this.getSwaggerType(arrayType.elementType) };
     }
     getSwaggerTypeForEnumType(enumType) {
-        return { type: 'string', enum: enumType.enumMembers.map(member => member) };
+        return {
+            type: 'string',
+            enum: enumType.enumMembers.map(member => member)
+        };
     }
     getSwaggerTypeForReferenceType(referenceType) {
         return { $ref: `#/definitions/${referenceType.typeName}` };
