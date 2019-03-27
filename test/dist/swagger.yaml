@@ -35,20 +35,6 @@ definitions:
             - username
             - password
             - mobile
-    ResultListUser:
-        description: ""
-        properties:
-            size:
-                type: number
-                format: double
-                description: ""
-            type:
-                type: string
-                description: ""
-        type: object
-        required:
-            - size
-            - type
     User:
         description: ""
         properties:
@@ -58,6 +44,38 @@ definitions:
         type: object
         required:
             - name
+    Query:
+        description: ""
+        properties:
+            size:
+                type: number
+                format: double
+                description: ""
+            index:
+                type: number
+                format: double
+                description: ""
+        type: object
+        required:
+            - size
+            - index
+    ResultList$User:
+        description: ""
+        properties:
+            list:
+                type: array
+                items:
+                    $ref: '#/definitions/User'
+                description: ""
+            count:
+                type: number
+                format: double
+                description: ""
+            query:
+                $ref: '#/definitions/Query'
+        type: object
+        required:
+            - list
 info:
     description: 'test description'
     license:
@@ -106,7 +124,7 @@ paths:
                 '200':
                     description: Ok
                     schema:
-                        $ref: '#/definitions/ResultListUser'
+                        $ref: '#/definitions/ResultList$User'
             description: ""
             parameters:
                 -

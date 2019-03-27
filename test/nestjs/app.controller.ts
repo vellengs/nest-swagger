@@ -26,8 +26,20 @@ class User {
 }
 
 class ResultList<T> {
+  list: T[];
+  count?: number;
+  query?: Query;
+}
+
+class Address {
+  name: string;
+  location: string;
+  houseNumber: string;
+}
+
+interface Query {
   size: number;
-  type: string;
+  index: number;
 }
 
 @Controller({
