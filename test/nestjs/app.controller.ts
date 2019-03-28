@@ -39,6 +39,11 @@ class Address {
   houseNumber: string;
 }
 
+class KeyValueDto {
+  label: string;
+  value: string;
+}
+
 interface Query {
   size: number;
   index: number;
@@ -71,6 +76,14 @@ export class AppController {
 
   @Get('profile')
   async profile(@Req() request: Request): Promise<User> {
+    return null;
+  }
+
+  @Get('search')
+  async search(
+    @Query('keyword') keyword?: string,
+    @Query('value') value?: string
+  ): Promise<KeyValueDto[]> {
     return null;
   }
 
