@@ -206,6 +206,24 @@
 				]
 			}
 		},
+		"/app/profile": {
+			"get": {
+				"operationId": "AppProfile",
+				"produces": [
+					"application/json"
+				],
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"schema": {
+							"$ref": "#/definitions/User"
+						}
+					}
+				},
+				"description": "",
+				"parameters": []
+			}
+		},
 		"/app/{id}": {
 			"get": {
 				"operationId": "AppFindOne",

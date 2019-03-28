@@ -5,9 +5,11 @@ import {
   Post,
   Query,
   ParseIntPipe,
-  Param
+  Param,
+  Req
 } from '@nestjs/common';
 import { AppService } from './app.service';
+import { Request } from '@nestjs/common';
 
 class CreateUserReq {
   username: string;
@@ -64,6 +66,11 @@ export class AppController {
     @Query('index', new ParseIntPipe()) index: number = 1,
     @Query('size', new ParseIntPipe()) size: number = 10
   ): Promise<ResultList<User>> {
+    return null;
+  }
+
+  @Get('profile')
+  async profile(@Req() request: Request): Promise<User> {
     return null;
   }
 
