@@ -1,153 +1,256 @@
 #!/usr/bin/env node
-'use strict';
-
-import { isAbsolute, join } from 'path';
+import * as path from 'path';
 import * as ts from 'typescript';
-import { ArgumentParser } from 'argparse';
-import { Config, SwaggerConfig } from './swagger/config';
-import { MetadataGenerator } from './metadata/metadataGenerator';
-import { SpecGenerator } from './swagger/generator';
-
-const packageJson = require(`../package.json`);
+import * as YAML from 'yamljs';
+import * as yargs from 'yargs';
+import { Config, RoutesConfig, SwaggerConfig } from './config';
+import { generateRoutes } from './module/generate-routes';
+import { generateSwaggerSpec } from './module/generate-swagger-spec';
+import { fsExists, fsReadFile } from './utils/fs';
 
 const workingDir: string = process.cwd();
-const versionDefault = getPackageJsonValue('version');
-const nameDefault = getPackageJsonValue('name');
-const descriptionDefault = getPackageJsonValue('description');
-const licenseDefault = getPackageJsonValue('license');
 
-const parser = new ArgumentParser({
-  addHelp: true,
-  description: 'Typescript-REST Swagger tool',
-  version: packageJson.version
-});
-
-parser.addArgument(['-c', '--config'], {
-  help: 'The swagger config file (swagger.json).'
-});
-
-parser.addArgument(['-t', '--tsconfig'], {
-  action: 'storeTrue',
-  defaultValue: false,
-  help: 'Load tsconfig.json file'
-});
-
-parser.addArgument(['-p', '--tsconfig_path'], {
-  help:
-    'The tsconfig file (tsconfig.json) path. Default to {cwd}/tsconfig.json.'
-});
-
-const parameters = parser.parseArgs();
-const config = getConfig(parameters.config);
-const compilerOptions = getCompilerOptions(
-  parameters.tsconfig,
-  parameters.tsconfig_path
-);
-
-const swaggerConfig = validateSwaggerConfig(config.swagger);
-
-const metadata = new MetadataGenerator(
-  swaggerConfig.entryFile,
-  compilerOptions
-).generate();
-new SpecGenerator(metadata, swaggerConfig)
-  .generate(swaggerConfig.outputDirectory, swaggerConfig.yaml)
-  .then(() => {
-    console.info('Generation completed.');
-  })
-  .catch((err: any) => {
-    console.error(`Error generating swagger. ${err}`);
-  });
-
-function getPackageJsonValue(key: string): string {
-  try {
-    const projectPackageJson = require(`${workingDir}/package.json`);
-    return projectPackageJson[key] || '';
-  } catch (err) {
-    return '';
+let packageJson: any;
+const getPackageJsonValue = async (
+  key: string,
+  defaultValue = ''
+): Promise<string> => {
+  if (!packageJson) {
+    try {
+      const packageJsonRaw = await fsReadFile(`${workingDir}/package.json`);
+      packageJson = JSON.parse(packageJsonRaw.toString('utf8'));
+    } catch (err) {
+      return defaultValue;
+    }
   }
-}
 
-function getConfig(configPath = 'swagger.json'): Config {
+  return packageJson[key] || '';
+};
+
+const nameDefault = () => getPackageJsonValue('name', 'TSOA');
+const versionDefault = () => getPackageJsonValue('version', '1.0.0');
+const descriptionDefault = () =>
+  getPackageJsonValue(
+    'description',
+    'Build swagger-compliant REST APIs using TypeScript and Node'
+  );
+const licenseDefault = () => getPackageJsonValue('license', 'MIT');
+
+const getConfig = async (configPath = 'tsoa.json'): Promise<Config> => {
+  let config: Config;
   try {
-    return require(`${workingDir}/${configPath}`);
+    const ext = path.extname(configPath);
+    if (ext === '.yaml' || ext === '.yml') {
+      config = YAML.load(configPath);
+    } else {
+      const configRaw = await fsReadFile(`${workingDir}/${configPath}`);
+      config = JSON.parse(configRaw.toString('utf8'));
+    }
   } catch (err) {
     if (err.code === 'MODULE_NOT_FOUND') {
       throw Error(`No config file found at '${configPath}'`);
     } else if (err.name === 'SyntaxError') {
+      // tslint:disable-next-line:no-console
+      console.error(err);
       throw Error(
         `Invalid JSON syntax in config at '${configPath}': ${err.message}`
       );
     } else {
+      // tslint:disable-next-line:no-console
+      console.error(err);
       throw Error(
         `Unhandled error encountered loading '${configPath}': ${err.message}`
       );
     }
   }
-}
 
-function validateSwaggerConfig(conf: SwaggerConfig): SwaggerConfig {
-  if (!conf.outputDirectory) {
+  return config;
+};
+
+const validateCompilerOptions = (
+  config?: ts.CompilerOptions
+): ts.CompilerOptions => {
+  return config || {};
+};
+
+const validateSwaggerConfig = async (
+  config: SwaggerConfig
+): Promise<SwaggerConfig> => {
+  if (!config.outputDirectory) {
     throw new Error(
       'Missing outputDirectory: onfiguration most contain output directory'
     );
   }
-  if (!conf.entryFile) {
+  if (!config.entryFile) {
     throw new Error(
       'Missing entryFile: Configuration must contain an entry point file.'
     );
   }
-  conf.version = conf.version || versionDefault;
-  conf.name = conf.name || nameDefault;
-  conf.description = conf.description || descriptionDefault;
-  conf.license = conf.license || licenseDefault;
-  conf.yaml = conf.yaml === false ? false : true;
-
-  return conf;
-}
-
-function getCompilerOptions(
-  loadTsconfig: boolean,
-  tsconfigPath?: string | null
-): ts.CompilerOptions {
-  if (!loadTsconfig && tsconfigPath) {
-    loadTsconfig = true;
+  if (!(await fsExists(config.entryFile))) {
+    throw new Error(
+      `EntryFile not found: ${
+        config.entryFile
+      } - Please check your tsoa config.`
+    );
   }
-  if (!loadTsconfig) {
-    return {};
+  config.version = config.version || (await versionDefault());
+  config.name = config.name || (await nameDefault());
+  config.description = config.description || (await descriptionDefault());
+  config.license = config.license || (await licenseDefault());
+  config.basePath = config.basePath || '/';
+
+  return config;
+};
+
+const validateRoutesConfig = async (
+  config: RoutesConfig
+): Promise<RoutesConfig> => {
+  if (!config.entryFile) {
+    throw new Error(
+      'Missing entryFile: Configuration must contain an entry point file.'
+    );
   }
-  const cwd = process.cwd();
-  const defaultTsconfigPath = join(cwd, 'tsconfig.json');
-  tsconfigPath = tsconfigPath
-    ? getAbsolutePath(tsconfigPath, cwd)
-    : defaultTsconfigPath;
+  if (!(await fsExists(config.entryFile))) {
+    throw new Error(
+      `EntryFile not found: ${
+        config.entryFile
+      } - Please check your tsoa config.`
+    );
+  }
+  if (!config.routesDir) {
+    throw new Error(
+      'Missing routesDir: Configuration must contain a routes file output directory.'
+    );
+  }
+
+  if (
+    config.authenticationModule &&
+    !(
+      (await fsExists(config.authenticationModule)) ||
+      (await fsExists(config.authenticationModule + '.ts'))
+    )
+  ) {
+    throw new Error(
+      `No authenticationModule file found at '${config.authenticationModule}'`
+    );
+  }
+
+  if (
+    config.iocModule &&
+    !(
+      (await fsExists(config.iocModule)) ||
+      (await fsExists(config.iocModule + '.ts'))
+    )
+  ) {
+    throw new Error(`No iocModule file found at '${config.iocModule}'`);
+  }
+
+  config.basePath = config.basePath || '/';
+  config.middleware = config.middleware || 'express';
+
+  return config;
+};
+
+const configurationArgs: yargs.Options = {
+  alias: 'c',
+  describe:
+    'tsoa configuration file; default is tsoa.json in the working directory',
+  required: false,
+  type: 'string'
+};
+
+const hostArgs: yargs.Options = {
+  describe: 'API host',
+  required: false,
+  type: 'string'
+};
+
+const basePathArgs: yargs.Options = {
+  describe: 'Base API path',
+  required: false,
+  type: 'string'
+};
+
+const yamlArgs: yargs.Options = {
+  describe: 'Swagger spec yaml format',
+  required: false,
+  type: 'boolean'
+};
+
+const jsonArgs: yargs.Options = {
+  describe: 'Swagger spec json format',
+  required: false,
+  type: 'boolean'
+};
+
+yargs
+  .usage('Usage: $0 <command> [options]')
+  .demand(1)
+  .command(
+    'swagger',
+    'Generate swagger spec',
+    {
+      basePath: basePathArgs,
+      configuration: configurationArgs,
+      host: hostArgs,
+      json: jsonArgs,
+      yaml: yamlArgs
+    },
+    swaggerSpecGenerator
+  )
+  .command(
+    'routes',
+    'Generate routes',
+    {
+      basePath: basePathArgs,
+      configuration: configurationArgs
+    },
+    routeGenerator
+  )
+  .help('help')
+  .alias('help', 'h').argv;
+
+async function swaggerSpecGenerator(args) {
   try {
-    const tsConfig = require(tsconfigPath);
-    if (!tsConfig) {
-      throw new Error('Invalid tsconfig');
+    const config = await getConfig(args.configuration);
+    if (args.basePath) {
+      config.swagger.basePath = args.basePath;
     }
-    return tsConfig.compilerOptions || {};
+    if (args.host) {
+      config.swagger.host = args.host;
+    }
+    if (args.yaml) {
+      config.swagger.yaml = args.yaml;
+    }
+    if (args.json) {
+      config.swagger.yaml = false;
+    }
+
+    const compilerOptions = validateCompilerOptions(config.compilerOptions);
+    const swaggerConfig = await validateSwaggerConfig(config.swagger);
+
+    await generateSwaggerSpec(swaggerConfig, compilerOptions, config.ignore);
   } catch (err) {
-    if (err.code === 'MODULE_NOT_FOUND') {
-      throw Error(`No tsconfig file found at '${tsconfigPath}'`);
-    } else if (err.name === 'SyntaxError') {
-      throw Error(
-        `Invalid JSON syntax in tsconfig at '${tsconfigPath}': ${err.message}`
-      );
-    } else {
-      throw Error(
-        `Unhandled error encountered loading tsconfig '${tsconfigPath}': ${
-          err.message
-        }`
-      );
-    }
+    // tslint:disable-next-line:no-console
+    console.error('Generate swagger error.\n', err);
+    process.exit(1);
   }
 }
 
-function getAbsolutePath(path: string, basePath: string): string {
-  if (isAbsolute(path)) {
-    return path;
-  } else {
-    return join(basePath, path);
+async function routeGenerator(args) {
+  try {
+    const config = await getConfig(args.configuration);
+    if (args.basePath) {
+      config.routes.basePath = args.basePath;
+    }
+
+    const compilerOptions = validateCompilerOptions(config.compilerOptions);
+    const routesConfig = await validateRoutesConfig(config.routes);
+
+    await generateRoutes(routesConfig, compilerOptions, config.ignore);
+  } catch (err) {
+    // tslint:disable-next-line:no-console
+    console.error('Generate routes error.\n', err);
+    process.exit(1);
   }
 }

@@ -1,7 +1,8 @@
 import 'mocha';
-import { MetadataGenerator } from '../../src/metadata/metadataGenerator';
-import { SpecGenerator } from './../../src/swagger/generator';
-import { SwaggerConfig } from './../../src/swagger/config';
+import { SwaggerConfig } from './../../src/config';
+import { MetadataGenerator } from './../../src/metadataGeneration/metadataGenerator';
+import { SpecGenerator } from './../../src/swagger/specGenerator';
+import { generateSwaggerSpec } from './../../src/module/generate-swagger-spec';
 
 async function generateNest() {
   const compilerOptions = {
@@ -15,15 +16,16 @@ async function generateNest() {
   const metadata = new MetadataGenerator(
     swaggerConfig.entryFile,
     compilerOptions
-  ).generate();
-  new SpecGenerator(metadata, swaggerConfig)
-    .generate(swaggerConfig.outputDirectory, swaggerConfig.yaml)
-    .then(() => {
-      console.info('Generation completed.');
-    })
-    .catch((err: any) => {
-      console.error(`Error generating swagger. ${err}`);
-    });
+  ).Generate();
+
+  console.log('metadata:', metadata);
+
+  // const spec = new SpecGenerator(metadata, swaggerConfig).GetSpec()
+  // generateSwaggerSpec({
+  //   basePath: "/api",
+  //   entryFile: swaggerConfig.entryFile,
+  //   outputDirectory: "./dist"
+  // });
 }
 
 describe('Definition generation', async () => {

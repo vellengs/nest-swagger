@@ -15,7 +15,11 @@
   "dependencies": {
     "argparse": "^1.0.10",
     "lodash": "4.17.11",
+    "lodash.indexof": "^4.0.5",
+    "lodash.map": "^4.6.0",
     "merge": "^1.2.1",
+    "minimatch": "^3.0.4",
+    "moment": "^2.24.0",
     "path-to-regexp": "3.0.0",
     "yamljs": "^0.3.0"
   },
@@ -24,6 +28,8 @@
     "@nestjs/core": "6.0.1",
     "@nestjs/platform-express": "^6.0.2",
     "@types/argparse": "^1.0.36",
+    "@types/lodash.indexof": "^4.0.6",
+    "@types/minimatch": "^3.0.3",
     "@types/mocha": "^5.2.6",
     "@types/node": "11.11.3",
     "chai": "^4.2.0",
