@@ -198,7 +198,6 @@ function getLiteralType(typeNode) {
                 return unionNode.literal.text;
             }
             else {
-                console.log('unionNode', unionNode);
                 return '';
             }
         }),

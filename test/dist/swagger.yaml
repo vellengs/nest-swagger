@@ -149,6 +149,18 @@ paths:
                     type: number
                     format: double
                     default: 10
+    /app/profile:
+        get:
+            operationId: AppProfile
+            produces:
+                - application/json
+            responses:
+                '200':
+                    description: Ok
+                    schema:
+                        $ref: '#/definitions/User'
+            description: ""
+            parameters: []
     '/app/{id}':
         get:
             operationId: AppFindOne

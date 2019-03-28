@@ -14,6 +14,8 @@ const DescribingParameters = {
     context: 'context',
 };
 const DecoratorTypes = {
+    REQ: 'Req',
+    RES: 'Res',
     REQUEST: 'Request',
     RESPONSE: 'Response',
     NEXT: 'Next',
@@ -48,6 +50,8 @@ class ParameterGenerator {
             case DecoratorTypes.SESSION:
                 return this.getCookieParameter(this.parameter, decoratorName);
             case DecoratorTypes.NEXT:
+            case DecoratorTypes.REQ:
+            case DecoratorTypes.RES:
             case DecoratorTypes.REQUEST:
             case DecoratorTypes.RESPONSE:
                 return this.getContextParameter(this.parameter);

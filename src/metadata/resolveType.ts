@@ -253,7 +253,6 @@ function getLiteralType(typeNode: ts.TypeNode): EnumerateType | undefined {
       if (unionNode && unionNode.literal) {
         return unionNode.literal.text as string;
       } else {
-        console.log('unionNode', unionNode);
         return ''; // TODO;
       }
     }),
