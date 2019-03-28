@@ -11,7 +11,7 @@ const DescribingParameters = {
     path: 'path',
     header: 'header',
     formData: 'formData',
-    context: 'context',
+    context: 'context'
 };
 const DecoratorTypes = {
     REQ: 'Req',
@@ -25,7 +25,7 @@ const DecoratorTypes = {
     HEADERS: 'Headers',
     SESSION: 'Session',
     FILE: 'File',
-    FILES: 'Files',
+    FILES: 'Files'
 };
 class ParameterGenerator {
     constructor(parameter, method, path, genericTypeMap) {
@@ -60,8 +60,10 @@ class ParameterGenerator {
         }
     }
     getCurrentLocation() {
-        const methodId = this.parameter.parent.name;
-        const controllerId = this.parameter.parent.parent.name;
+        const methodId = this.parameter.parent
+            .name;
+        const controllerId = this.parameter.parent
+            .parent.name;
         return `${controllerId.text}.${methodId.text}`;
     }
     getContextParameter(parameter) {
@@ -174,7 +176,7 @@ class ParameterGenerator {
         if (!this.supportPathDataType(type)) {
             throw new InvalidParameterException(`Parameter '${parameterName}:${type}' can't be passed as a path parameter in '${this.getCurrentLocation()}'.`);
         }
-        if ((!this.path.includes(`{${name}}`)) && (!this.path.includes(`:${name}`))) {
+        if (!this.path.includes(`{${name}}`) && !this.path.includes(`:${name}`)) {
             throw new Error(`Parameter '${parameterName}' can't match in path: '${this.path}'`);
         }
         return {
@@ -208,11 +210,33 @@ class ParameterGenerator {
         return Object.values(DecoratorTypes).some(d => d === decoratorName);
     }
     supportPathDataType(parameterType) {
-        return ['string', 'integer', 'long', 'float', 'double', 'date', 'datetime', 'buffer', 'boolean', 'enum'].find(t => t === parameterType.typeName);
+        return [
+            'string',
+            'integer',
+            'long',
+            'float',
+            'double',
+            'date',
+            'datetime',
+            'buffer',
+            'boolean',
+            'enum'
+        ].find(t => t === parameterType.typeName);
     }
     supportQueryDataType(parameterType) {
-        return ['string', 'integer', 'long', 'float', 'double', 'date',
-            'datetime', 'buffer', 'boolean', 'enum', 'array'].find(t => t === parameterType.typeName);
+        return [
+            'string',
+            'integer',
+            'long',
+            'float',
+            'double',
+            'date',
+            'datetime',
+            'buffer',
+            'boolean',
+            'enum',
+            'array'
+        ].find(t => t === parameterType.typeName);
     }
     getValidatedType(parameter) {
         if (!parameter.type) {
