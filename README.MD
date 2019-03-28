@@ -31,3 +31,7 @@ npm install nest-swagger
     npm run swagger
 ```
 you can find the output generated `swagger.json` and `swagger.yaml`
+
+### examples project
+
+https://github.com/vellengs/nestx-server
