@@ -76,6 +76,19 @@ definitions:
         type: object
         required:
             - list
+    KeyValueDto:
+        description: ""
+        properties:
+            label:
+                type: string
+                description: ""
+            value:
+                type: string
+                description: ""
+        type: object
+        required:
+            - label
+            - value
 info:
     description: 'test description'
     license:
@@ -161,6 +174,32 @@ paths:
                         $ref: '#/definitions/User'
             description: ""
             parameters: []
+    /app/search:
+        get:
+            operationId: AppSearch
+            produces:
+                - application/json
+            responses:
+                '200':
+                    description: Ok
+                    schema:
+                        type: array
+                        items:
+                            $ref: '#/definitions/KeyValueDto'
+            description: ""
+            parameters:
+                -
+                    description: ""
+                    in: query
+                    name: keyword
+                    required: false
+                    type: string
+                -
+                    description: ""
+                    in: query
+                    name: value
+                    required: false
+                    type: string
     '/app/{id}':
         get:
             operationId: AppFindOne

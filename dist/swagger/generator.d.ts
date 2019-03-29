@@ -1,5 +1,5 @@
 import { SwaggerConfig } from './config';
-import { Metadata } from '../metadata/metadataGenerator';
+import { Metadata } from '../metadata';
 import { Swagger } from './swagger';
 export declare class SpecGenerator {
   private readonly metadata;

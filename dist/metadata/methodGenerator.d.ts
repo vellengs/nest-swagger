@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { Method } from './metadataGenerator';
+import { Method } from './';
 export declare class MethodGenerator {
   private readonly node;
   private readonly controllerPath;
@@ -9,7 +9,7 @@ export declare class MethodGenerator {
   constructor(
     node: ts.MethodDeclaration,
     controllerPath: string,
-    genericTypeMap?: Map<String, ts.TypeNode>
+    genericTypeMap?: Map<String, ts.TypeReferenceNode>
   );
   isValid(): boolean;
   getMethodName(): string;

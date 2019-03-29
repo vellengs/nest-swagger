@@ -10,7 +10,7 @@ import {
   Method,
   Parameter,
   ResponseType
-} from '../metadata/metadataGenerator';
+} from '../metadata';
 import { Swagger } from './swagger';
 import * as fs from 'fs';
 import * as mkdirp from 'mkdirp';
