@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const ts = require("typescript");
-const resolveType_1 = require("./resolveType");
 const parameterGenerator_1 = require("./parameterGenerator");
 const jsDocUtils_1 = require("../utils/jsDocUtils");
 const decoratorUtils_1 = require("../utils/decoratorUtils");
 const pathUtils_1 = require("../utils/pathUtils");
 const pathUtil = require("path");
+const typesResolver_1 = require("./typesResolver");
 class MethodGenerator {
     constructor(node, controllerPath, genericTypeMap) {
         this.node = node;
@@ -23,10 +23,10 @@ class MethodGenerator {
     }
     generate() {
         if (!this.isValid()) {
-            throw new Error('This isn\'t a valid controller method.');
+            throw new Error("This isn't a valid controller method.");
         }
         const identifier = this.node.name;
-        const type = resolveType_1.resolveType(this.node.type, this.genericTypeMap);
+        const type = new typesResolver_1.TypesResolver(this.node.type, this.genericTypeMap).resolveType();
         const responses = this.mergeResponses(this.getMethodResponses(), this.getMethodSuccessResponse(type));
         return {
             consumes: this.getDecoratorValues('Accept'),
@@ -45,18 +45,21 @@ class MethodGenerator {
         };
     }
     buildParameters() {
-        const parameters = this.node.parameters.map(p => {
+        const parameters = this.node.parameters
+            .map(p => {
             try {
-                const path = pathUtil.posix.join('/', (this.controllerPath ? this.controllerPath : ''), this.path);
+                const path = pathUtil.posix.join('/', this.controllerPath ? this.controllerPath : '', this.path);
                 return new parameterGenerator_1.ParameterGenerator(p, this.method, path, this.genericTypeMap).generate();
             }
             catch (e) {
                 const methodId = this.node.name;
-                const controllerId = this.node.parent.name;
+                const controllerId = this.node.parent
+                    .name;
                 const parameterId = p.name;
                 throw new Error(`Error generate parameter method: '${controllerId.text}.${methodId.text}' argument: ${parameterId.text} ${e}`);
             }
-        }).filter(p => (p.in !== 'context') && (p.in !== 'cookie'));
+        })
+            .filter(p => p.in !== 'context' && p.in !== 'cookie');
         const bodyParameters = parameters.filter(p => p.in === 'body');
         const formParameters = parameters.filter(p => p.in === 'formData');
         if (bodyParameters.length > 1) {
@@ -69,7 +72,8 @@ class MethodGenerator {
     }
     getCurrentLocation() {
         const methodId = this.node.name;
-        const controllerId = this.node.parent.name;
+        const controllerId = this.node.parent
+            .name;
         return `${controllerId.text}.${methodId.text}`;
     }
     processMethodDecorators() {
@@ -78,15 +82,29 @@ class MethodGenerator {
             return;
         }
         if (httpMethodDecorators.length > 1) {
-            throw new Error(`Only one HTTP Method decorator in '${this.getCurrentLocation}' method is acceptable, Found: ${httpMethodDecorators.map(d => d.text).join(', ')}`);
+            throw new Error(`Only one HTTP Method decorator in '${this.getCurrentLocation}' method is acceptable, Found: ${httpMethodDecorators
+                .map(d => d.text)
+                .join(', ')}`);
         }
         const methodDecorator = httpMethodDecorators[0];
         this.method = methodDecorator.text.toLowerCase();
         const pathDecorators = decoratorUtils_1.getDecorators(this.node, decorator => {
-            return ['PATH', 'GET', 'POST', 'PATCH', 'DELETE', 'PUT', 'OPTIONS', 'HEAD', 'ALL'].includes(decorator.text.toUpperCase());
+            return [
+                'PATH',
+                'GET',
+                'POST',
+                'PATCH',
+                'DELETE',
+                'PUT',
+                'OPTIONS',
+                'HEAD',
+                'ALL'
+            ].includes(decorator.text.toUpperCase());
         });
         if (pathDecorators && pathDecorators.length > 1) {
-            throw new Error(`Only one Path decorator in '${this.getCurrentLocation}' method is acceptable, Found: ${httpMethodDecorators.map(d => d.text).join(', ')}`);
+            throw new Error(`Only one Path decorator in '${this.getCurrentLocation}' method is acceptable, Found: ${httpMethodDecorators
+                .map(d => d.text)
+                .join(', ')}`);
         }
         if (pathDecorators) {
             const pathDecorator = pathDecorators[0];
@@ -120,8 +138,8 @@ class MethodGenerator {
             return {
                 description: description,
                 examples: examples,
-                schema: (decorator.typeArguments && decorator.typeArguments.length > 0)
-                    ? resolveType_1.resolveType(decorator.typeArguments[0], this.genericTypeMap)
+                schema: decorator.typeArguments && decorator.typeArguments.length > 0
+                    ? new typesResolver_1.TypesResolver(decorator.typeArguments[0], this.genericTypeMap).resolveType()
                     : undefined,
                 status: status
             };
@@ -138,14 +156,21 @@ class MethodGenerator {
     }
     getMethodSuccessResponseData(type) {
         switch (type.typeName) {
-            case 'void': return { status: '204', type: type };
-            case 'NewResource': return { status: '201', type: type.typeArgument || type };
-            case 'RequestAccepted': return { status: '202', type: type.typeArgument || type };
-            case 'MovedPermanently': return { status: '301', type: type.typeArgument || type };
-            case 'MovedTemporarily': return { status: '302', type: type.typeArgument || type };
+            case 'void':
+                return { status: '204', type: type };
+            case 'NewResource':
+                return { status: '201', type: type.typeArgument || type };
+            case 'RequestAccepted':
+                return { status: '202', type: type.typeArgument || type };
+            case 'MovedPermanently':
+                return { status: '301', type: type.typeArgument || type };
+            case 'MovedTemporarily':
+                return { status: '302', type: type.typeArgument || type };
             case 'DownloadResource':
-            case 'DownloadBinaryData': return { status: '200', type: { typeName: 'buffer' } };
-            default: return { status: '200', type: type };
+            case 'DownloadBinaryData':
+                return { status: '200', type: { typeName: 'buffer' } };
+            default:
+                return { status: '200', type: type };
         }
     }
     getMethodSuccessExamples() {
@@ -164,7 +189,7 @@ class MethodGenerator {
         if (!responses || !responses.length) {
             return [defaultResponse];
         }
-        const index = responses.findIndex((resp) => resp.status === defaultResponse.status);
+        const index = responses.findIndex(resp => resp.status === defaultResponse.status);
         if (index >= 0) {
             if (defaultResponse.examples && !responses[index].examples) {
                 responses[index].examples = defaultResponse.examples;
@@ -176,7 +201,16 @@ class MethodGenerator {
         return responses;
     }
     supportsPathMethod(method) {
-        return ['GET', 'POST', 'PATCH', 'DELETE', 'PUT', 'OPTIONS', 'HEAD', 'ALL'].some(m => m.toUpperCase() === method.toUpperCase());
+        return [
+            'GET',
+            'POST',
+            'PATCH',
+            'DELETE',
+            'PUT',
+            'OPTIONS',
+            'HEAD',
+            'ALL'
+        ].some(m => m.toUpperCase() === method.toUpperCase());
     }
     getExamplesValue(argument) {
         let example = {};
@@ -208,7 +242,9 @@ class MethodGenerator {
         }
         return securityDecorators.map(d => ({
             name: d.arguments[0],
-            scopes: d.arguments[1] ? d.arguments[1].elements.map((e) => e.text) : undefined
+            scopes: d.arguments[1]
+                ? d.arguments[1].elements.map((e) => e.text)
+                : undefined
         }));
     }
     getInitializerValue(initializer) {

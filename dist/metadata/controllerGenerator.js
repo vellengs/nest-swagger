@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const ts = require("typescript");
-const resolveType_1 = require("./resolveType");
 const methodGenerator_1 = require("./methodGenerator");
 const decoratorUtils_1 = require("../utils/decoratorUtils");
 const pathUtils_1 = require("../utils/pathUtils");
 const _ = require("lodash");
+const resolveUtils_1 = require("../utils/resolveUtils");
 class ControllerGenerator {
     constructor(node) {
         this.node = node;
@@ -64,7 +64,7 @@ class ControllerGenerator {
         };
         while (targetClass) {
             result = _.union(result, this.buildMethodsForClass(targetClass.type, targetClass.typeArguments));
-            targetClass = resolveType_1.getSuperClass(targetClass.type, targetClass.typeArguments);
+            targetClass = resolveUtils_1.getSuperClass(targetClass.type, targetClass.typeArguments);
         }
         return result;
     }

@@ -37,10 +37,11 @@ class MetadataGenerator {
         this.circularDependencyResolvers.push(callback);
     }
     getClassDeclaration(className) {
-        const found = this.nodes
-            .filter(node => {
+        const found = this.nodes.filter(node => {
             const classDeclaration = node;
-            return (node.kind === ts.SyntaxKind.ClassDeclaration && classDeclaration.name && classDeclaration.name.text === className);
+            return (node.kind === ts.SyntaxKind.ClassDeclaration &&
+                classDeclaration.name &&
+                classDeclaration.name.text === className);
         });
         if (found && found.length) {
             return found[0];
@@ -48,10 +49,11 @@ class MetadataGenerator {
         return undefined;
     }
     getInterfaceDeclaration(className) {
-        const found = this.nodes
-            .filter(node => {
+        const found = this.nodes.filter(node => {
             const interfaceDeclaration = node;
-            return (node.kind === ts.SyntaxKind.InterfaceDeclaration && interfaceDeclaration.name && interfaceDeclaration.name.text === className);
+            return (node.kind === ts.SyntaxKind.InterfaceDeclaration &&
+                interfaceDeclaration.name &&
+                interfaceDeclaration.name.text === className);
         });
         if (found && found.length) {
             return found[0];
@@ -59,9 +61,9 @@ class MetadataGenerator {
         return undefined;
     }
     buildControllers() {
-        const nodes = this.nodes
-            .filter(node => node.kind === ts.SyntaxKind.ClassDeclaration);
-        const validNodes = nodes.map((classDeclaration) => new controllerGenerator_1.ControllerGenerator(classDeclaration))
+        const nodes = this.nodes.filter(node => node.kind === ts.SyntaxKind.ClassDeclaration);
+        const validNodes = nodes
+            .map((classDeclaration) => new controllerGenerator_1.ControllerGenerator(classDeclaration))
             .filter(generator => generator.isValid());
         return validNodes.map(generator => generator.generate());
     }

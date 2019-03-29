@@ -1,15 +1,14 @@
-import { MetadataGenerator, Parameter, Type } from './metadataGenerator';
-import {
-  resolveType,
-  getCommonPrimitiveAndArrayUnionType,
-  getLiteralValue
-} from './resolveType';
+import { Parameter, Type } from '.';
+import { getLiteralValue } from './../utils/resolveUtils';
+
 import {
   getDecoratorName,
   getDecoratorTextValue,
   getDecoratorOptions
 } from '../utils/decoratorUtils';
 import * as ts from 'typescript';
+import { TypesResolver } from './typesResolver';
+import { MetadataGenerator } from './metadataGenerator';
 
 const DescribingParameters = {
   cookie: 'cookie',
@@ -41,7 +40,7 @@ export class ParameterGenerator {
     private readonly parameter: ts.ParameterDeclaration,
     private readonly method: string,
     private readonly path: string,
-    private readonly genericTypeMap?: Map<String, ts.TypeNode>
+    private readonly genericTypeMap?: Map<String, ts.TypeReferenceNode>
   ) {}
 
   public generate(): Parameter {
@@ -223,7 +222,9 @@ export class ParameterGenerator {
     let type = this.getValidatedType(parameter);
 
     if (!this.supportQueryDataType(type)) {
-      const arrayType = getCommonPrimitiveAndArrayUnionType(parameter.type);
+      const arrayType = TypesResolver.getCommonPrimitiveAndArrayUnionType(
+        parameter.type
+      );
       if (arrayType && this.supportQueryDataType(arrayType)) {
         type = arrayType;
       } else {
@@ -354,7 +355,7 @@ export class ParameterGenerator {
         } doesn't have a valid type assigned in '${this.getCurrentLocation()}'.`
       );
     }
-    return resolveType(parameter.type, this.genericTypeMap);
+    return new TypesResolver(parameter.type, this.genericTypeMap).resolveType();
   }
 
   private getDefaultValue(initializer?: ts.Expression) {
