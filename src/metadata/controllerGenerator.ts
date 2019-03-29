@@ -1,10 +1,10 @@
 import * as ts from 'typescript';
-import { Controller } from './metadataGenerator';
-import { getSuperClass } from './resolveType';
+import { Controller } from '.';
 import { MethodGenerator } from './methodGenerator';
 import { getDecorators, getControllerDecorator } from '../utils/decoratorUtils';
 import { normalizePath } from '../utils/pathUtils';
 import * as _ from 'lodash';
+import { getSuperClass } from '../utils/resolveUtils';
 
 export class ControllerGenerator {
   private readonly pathValue: string | undefined;

@@ -7,12 +7,12 @@ import {
   ObjectType,
   ArrayType,
   Property
-} from './metadataGenerator';
+} from './';
 import { getDecoratorName } from '../utils/decoratorUtils';
 import { getFirstMatchingJSDocTagName } from '../utils/jsDocUtils';
 import * as _ from 'lodash';
 
-const syntaxKindMap: { [kind: number]: string } = {};
+export const syntaxKindMap: { [kind: number]: string } = {};
 syntaxKindMap[ts.SyntaxKind.NumberKeyword] = 'number';
 syntaxKindMap[ts.SyntaxKind.StringKeyword] = 'string';
 syntaxKindMap[ts.SyntaxKind.BooleanKeyword] = 'boolean';
