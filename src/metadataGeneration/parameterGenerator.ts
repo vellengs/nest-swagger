@@ -9,6 +9,32 @@ import { getInitializerValue } from './initializer-value';
 import { MetadataGenerator } from './metadataGenerator';
 import { Tsoa } from './tsoa';
 import { TypeResolver } from './typeResolver';
+import { Parameter } from './../interfaces/types';
+
+const DescribingParameters = {
+  cookie: 'cookie',
+  body: 'body',
+  query: 'query',
+  path: 'path',
+  header: 'header',
+  formData: 'formData',
+  context: 'context'
+};
+
+const DecoratorTypes = {
+  REQ: 'Req',
+  RES: 'Res',
+  REQUEST: 'Request',
+  RESPONSE: 'Response',
+  NEXT: 'Next',
+  BODY: 'Body',
+  QUERY: 'Query',
+  PARAM: 'Param',
+  HEADERS: 'Headers',
+  SESSION: 'Session',
+  FILE: 'File',
+  FILES: 'Files'
+};
 
 export class ParameterGenerator {
   constructor(
@@ -18,27 +44,49 @@ export class ParameterGenerator {
     private readonly current: MetadataGenerator
   ) {}
 
-  public Generate(): Tsoa.Parameter {
+  public BuildParams(): Tsoa.Parameter {
     const decoratorName = getDecoratorName(this.parameter, identifier =>
       this.supportParameterDecorator(identifier.text)
     );
 
     switch (decoratorName) {
-      case 'Request':
+      case DecoratorTypes.REQUEST:
         return this.getRequestParameter(this.parameter);
-      case 'Body':
+      case DecoratorTypes.BODY:
         return this.getBodyParameter(this.parameter);
-      case 'BodyProp':
-        return this.getBodyPropParameter(this.parameter);
-      case 'Header':
+      // case 'BodyProp':
+      //   return this.getBodyPropParameter(this.parameter);
+      case DecoratorTypes.HEADERS:
         return this.getHeaderParameter(this.parameter);
-      case 'Query':
+      case DecoratorTypes.QUERY:
         return this.getQueryParameter(this.parameter);
-      case 'Path':
+      case DecoratorTypes.PARAM:
         return this.getPathParameter(this.parameter);
+      case DecoratorTypes.NEXT:
+      case DecoratorTypes.REQ:
+      case DecoratorTypes.RES:
+      case DecoratorTypes.REQUEST:
+      case DecoratorTypes.RESPONSE:
+        return this.getContextParameter(this.parameter);
       default:
         return this.getPathParameter(this.parameter);
     }
+  }
+
+  private getContextParameter(
+    parameter: ts.ParameterDeclaration
+  ): Tsoa.Parameter {
+    const parameterName = (parameter.name as ts.Identifier).text;
+
+    return {
+      description: this.getParameterDescription(parameter),
+      in: DescribingParameters.context as 'context',
+      name: parameterName,
+      parameterName,
+      required: !parameter.questionToken,
+      type: { dataType: 'any' },
+      validators: null
+    };
   }
 
   private getRequestParameter(
@@ -193,11 +241,12 @@ export class ParameterGenerator {
         `@Path('${parameterName}') Can't support '${type.dataType}' type.`
       );
     }
-    if (!this.path.includes(`{${pathName}}`)) {
-      throw new GenerateMetadataError(
-        `@Path('${parameterName}') Can't match in URL: '${this.path}'.`
-      );
-    }
+    // TODO
+    // if (!this.path.includes(`{${pathName}}`)) {
+    //   throw new GenerateMetadataError(
+    //     `@Path('${parameterName}') Can't match in URL: '${this.path}'.`
+    //   );
+    // }
 
     return {
       default: getInitializerValue(parameter.initializer, type),

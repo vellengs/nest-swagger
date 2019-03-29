@@ -45,7 +45,8 @@ export namespace Tsoa {
       | 'formData'
       | 'body'
       | 'body-prop'
-      | 'request';
+      | 'request'
+      | 'context';
     name: string;
     required?: boolean;
     type: Type;

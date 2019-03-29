@@ -74,10 +74,10 @@ export class AppController {
     return null;
   }
 
-  @Get('profile')
-  async profile(@Req() request: Request): Promise<User> {
-    return null;
-  }
+  // @Get('profile')
+  // async profile(@Req() request: Request): Promise<User> {
+  //   return null;
+  // }
 
   @Get('search')
   async search(

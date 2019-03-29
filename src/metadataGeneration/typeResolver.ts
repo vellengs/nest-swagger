@@ -31,7 +31,8 @@ export class TypeResolver {
     private readonly typeNode: ts.TypeNode,
     private readonly current: MetadataGenerator,
     private readonly parentNode?: ts.Node,
-    private readonly extractEnum = true
+    private readonly extractEnum = true,
+    private readonly genericMapping = new Map<string, ts.TypeReferenceNode>()
   ) {}
 
   public resolve(): Tsoa.Type {
@@ -45,7 +46,10 @@ export class TypeResolver {
         dataType: 'array',
         elementType: new TypeResolver(
           (this.typeNode as ts.ArrayTypeNode).elementType,
-          this.current
+          this.current,
+          null,
+          true,
+          this.genericMapping
         ).resolve()
       } as Tsoa.ArrayType;
     }
@@ -102,13 +106,16 @@ export class TypeResolver {
       if (
         typeReference.typeName.text === 'Array' &&
         typeReference.typeArguments &&
-        typeReference.typeArguments.length === 1
+        typeReference.typeArguments.length === 1 // how about more then 1?
       ) {
         return {
           dataType: 'array',
           elementType: new TypeResolver(
             typeReference.typeArguments[0],
-            this.current
+            this.current,
+            null,
+            true,
+            this.genericMapping
           ).resolve()
         } as Tsoa.ArrayType;
       }
@@ -116,11 +123,14 @@ export class TypeResolver {
       if (
         typeReference.typeName.text === 'Promise' &&
         typeReference.typeArguments &&
-        typeReference.typeArguments.length === 1
+        typeReference.typeArguments.length === 1 // how about more then 1?
       ) {
         return new TypeResolver(
           typeReference.typeArguments[0],
-          this.current
+          this.current,
+          null,
+          true,
+          this.genericMapping
         ).resolve();
       }
 
@@ -145,17 +155,14 @@ export class TypeResolver {
     }
 
     let referenceType: Tsoa.ReferenceType;
-    if (
-      typeReference.typeArguments &&
-      typeReference.typeArguments.length === 1
-    ) {
-      const typeT: ts.NodeArray<
-        ts.TypeNode
-      > = typeReference.typeArguments as ts.NodeArray<ts.TypeNode>;
+    if (typeReference.typeArguments && typeReference.typeArguments.length > 0) {
+      const typeArguments: ts.NodeArray<
+        ts.TypeReferenceNode
+      > = typeReference.typeArguments as ts.NodeArray<ts.TypeReferenceNode>;
       referenceType = this.getReferenceType(
         typeReference.typeName as ts.EntityName,
         this.extractEnum,
-        typeT
+        typeArguments
       );
     } else {
       referenceType = this.getReferenceType(
@@ -312,7 +319,7 @@ export class TypeResolver {
   private getReferenceType(
     type: ts.EntityName,
     extractEnum = true,
-    genericTypes?: ts.NodeArray<ts.TypeNode>
+    genericTypes?: ts.NodeArray<ts.TypeReferenceNode>
   ): Tsoa.ReferenceType {
     const typeName = this.resolveFqTypeName(type);
     const refNameWithGenerics = this.getTypeName(typeName, genericTypes);
@@ -339,6 +346,9 @@ export class TypeResolver {
       inProgressTypes[refNameWithGenerics] = true;
 
       const modelType = this.getModelTypeDeclaration(type);
+      if (!modelType) {
+        debugger;
+      }
 
       const properties = this.getModelProperties(modelType, genericTypes);
       const additionalProperties = this.getModelAdditionalProperties(modelType);
@@ -531,20 +541,25 @@ export class TypeResolver {
       this.current.nodes
     );
 
-    const typeName =
+    let typeName =
       type.kind === ts.SyntaxKind.Identifier
         ? (type as ts.Identifier).text
         : (type as ts.QualifiedName).right.text;
 
-    let modelTypes = statements.filter(node => {
+    const availableTypes = statements.filter(node => {
       if (!this.nodeIsUsable(node) || !this.current.IsExportedNode(node)) {
         return false;
       }
+      return true;
+    });
 
+    if (this.genericMapping.has(typeName)) {
+      const genericType = this.genericMapping.get(typeName);
+      typeName = genericType.typeName.getText();
+    }
+
+    let modelTypes = availableTypes.filter(node => {
       const modelTypeDeclaration = node as UsableDeclaration;
-      if (typeName === 'T') {
-        return (modelTypeDeclaration.name as ts.Identifier).text === 'User';
-      }
       return (modelTypeDeclaration.name as ts.Identifier).text === typeName;
     }) as UsableDeclaration[];
 
@@ -603,14 +618,27 @@ export class TypeResolver {
     return modelTypes[0];
   }
 
+  /***** getModelProperties start  **********/
   private getModelProperties(
     node: UsableDeclaration,
-    genericTypes?: ts.NodeArray<ts.TypeNode>
+    genericTypes?: ts.NodeArray<ts.TypeReferenceNode>
   ): Tsoa.Property[] {
     const isIgnored = (e: ts.TypeElement | ts.ClassElement) => {
       const ignore = isExistJSDocTag(e, tag => tag.tagName.text === 'ignore');
       return ignore;
     };
+
+    // mapping generic types;  // TODO;
+    const genericMapping = new Map<string, ts.TypeReferenceNode>();
+    if (
+      genericTypes &&
+      node.typeParameters &&
+      node.typeParameters.length === genericTypes.length
+    ) {
+      node.typeParameters.forEach((p, index) => {
+        genericMapping.set(p.name.text, genericTypes[index]);
+      });
+    }
 
     // Interface model
     if (node.kind === ts.SyntaxKind.InterfaceDeclaration) {
@@ -640,7 +668,7 @@ export class TypeResolver {
             genericTypes.length &&
             node.typeParameters
           ) {
-            // The type definitions are conviently located on the object which allow us to map -> to the genericTypes
+            // The type definitions are conveniently located on the object which allow us to map -> to the genericTypes
             const typeParams = map(
               node.typeParameters,
               (typeParam: ts.TypeParameterDeclaration) => {
@@ -673,7 +701,13 @@ export class TypeResolver {
             format: this.getNodeFormat(propertyDeclaration),
             name: identifier.text,
             required: !propertyDeclaration.questionToken,
-            type: new TypeResolver(aType, this.current, aType.parent).resolve(),
+            type: new TypeResolver(
+              aType,
+              this.current,
+              aType.parent,
+              true,
+              genericMapping
+            ).resolve(),
             validators: getPropertyValidators(propertyDeclaration)
           } as Tsoa.Property;
         });
@@ -748,8 +782,17 @@ export class TypeResolver {
           `No valid type found for property declaration.`
         );
       }
+      if (genericMapping.values.length) {
+        debugger;
+      }
 
-      const type = new TypeResolver(typeNode, this.current, property).resolve();
+      const type = new TypeResolver(
+        typeNode,
+        this.current,
+        property,
+        true,
+        genericMapping
+      ).resolve();
 
       return {
         default: getInitializerValue(property.initializer, type),
@@ -762,6 +805,8 @@ export class TypeResolver {
       } as Tsoa.Property;
     });
   }
+
+  /***** getModelProperties end  **********/
 
   private getModelAdditionalProperties(node: UsableDeclaration) {
     if (node.kind === ts.SyntaxKind.InterfaceDeclaration) {
@@ -776,7 +821,10 @@ export class TypeResolver {
       const indexSignatureDeclaration = indexMember as ts.IndexSignatureDeclaration;
       const indexType = new TypeResolver(
         indexSignatureDeclaration.parameters[0].type as ts.TypeNode,
-        this.current
+        this.current,
+        null,
+        true,
+        this.genericMapping
       ).resolve();
       if (indexType.dataType !== 'string') {
         throw new GenerateMetadataError(`Only string indexers are supported.`);
@@ -784,7 +832,10 @@ export class TypeResolver {
 
       return new TypeResolver(
         indexSignatureDeclaration.type as ts.TypeNode,
-        this.current
+        this.current,
+        null,
+        true,
+        this.genericMapping
       ).resolve();
     }
 

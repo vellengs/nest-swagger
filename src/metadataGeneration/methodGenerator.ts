@@ -76,7 +76,7 @@ export class MethodGenerator {
           this.method,
           this.path,
           this.current
-        ).Generate();
+        ).BuildParams();
       } catch (e) {
         const methodId = this.node.name as ts.Identifier;
         const controllerId = (this.node.parent as ts.ClassDeclaration)
