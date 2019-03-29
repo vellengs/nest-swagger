@@ -18,7 +18,7 @@ export class MethodGenerator {
   constructor(
     private readonly node: ts.MethodDeclaration,
     private readonly controllerPath: string,
-    private readonly genericTypeMap?: Map<String, ts.TypeNode>
+    private readonly genericTypeMap?: Map<String, ts.TypeReferenceNode>
   ) {
     this.processMethodDecorators();
   }

@@ -1,13 +1,8 @@
 import { getDecoratorName } from './decoratorUtils';
 import { getFirstMatchingJSDocTagName } from './jsDocUtils';
 import * as ts from 'typescript';
-import {
-  Type,
-  Property,
-  MetadataGenerator,
-  EnumerateType
-} from './../metadata';
-
+import { Type, Property, EnumerateType } from './../metadata';
+import { MetadataGenerator } from './../metadata/metadataGenerator';
 export const syntaxKindMap: { [kind: number]: string } = {};
 syntaxKindMap[ts.SyntaxKind.NumberKeyword] = 'number';
 syntaxKindMap[ts.SyntaxKind.StringKeyword] = 'string';

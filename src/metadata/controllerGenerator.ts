@@ -86,7 +86,7 @@ export class ControllerGenerator {
 
   private buildMethodsForClass(
     node: ts.ClassDeclaration,
-    genericTypeMap?: Map<String, ts.TypeNode>
+    genericTypeMap?: Map<String, ts.TypeReferenceNode>
   ) {
     return node.members
       .filter(m => m.kind === ts.SyntaxKind.MethodDeclaration)

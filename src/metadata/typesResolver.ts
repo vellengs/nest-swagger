@@ -1,13 +1,5 @@
 import * as ts from 'typescript';
-import {
-  MetadataGenerator,
-  Type,
-  EnumerateType,
-  ReferenceType,
-  ObjectType,
-  ArrayType,
-  Property
-} from './';
+import { Type, ReferenceType, ObjectType, ArrayType, Property } from './';
 import * as _ from 'lodash';
 import {
   getPrimitiveType,
@@ -31,14 +23,40 @@ import {
   hasPublicConstructorModifier,
   resolveTypeParameter
 } from '../utils/resolveUtils';
+import { MetadataGenerator } from './metadataGenerator';
 
 const localReferenceTypeCache: { [typeName: string]: ReferenceType } = {};
 const inProgressTypes: { [typeName: string]: boolean } = {};
 
 export class TypesResolver {
+  public static getCommonPrimitiveAndArrayUnionType(
+    typeNode?: ts.TypeNode
+  ): Type | null {
+    if (typeNode && typeNode.kind === ts.SyntaxKind.UnionType) {
+      const union = typeNode as ts.UnionTypeNode;
+      const types = union.types.map(t => new TypesResolver(t).resolveType());
+      const arrType = types.find(t => t.typeName === 'array') as
+        | ArrayType
+        | undefined;
+      const primitiveType = types.find(t => t.typeName !== 'array');
+
+      if (
+        types.length === 2 &&
+        arrType &&
+        arrType.elementType &&
+        primitiveType &&
+        arrType.elementType.typeName === primitiveType.typeName
+      ) {
+        return arrType;
+      }
+    }
+
+    return null;
+  }
+
   constructor(
     readonly typeNode?: ts.TypeNode,
-    readonly genericTypeMap?: Map<String, ts.TypeNode>
+    readonly genericTypeMap?: Map<String, ts.TypeReferenceNode>
   ) {}
 
   public resolveType(): Type {
@@ -165,31 +183,6 @@ export class TypesResolver {
     return referenceType;
   }
 
-  public getCommonPrimitiveAndArrayUnionType(
-    typeNode?: ts.TypeNode
-  ): Type | null {
-    if (typeNode && typeNode.kind === ts.SyntaxKind.UnionType) {
-      const union = typeNode as ts.UnionTypeNode;
-      const types = union.types.map(t => new TypesResolver(t).resolveType());
-      const arrType = types.find(t => t.typeName === 'array') as
-        | ArrayType
-        | undefined;
-      const primitiveType = types.find(t => t.typeName !== 'array');
-
-      if (
-        types.length === 2 &&
-        arrType &&
-        arrType.elementType &&
-        primitiveType &&
-        arrType.elementType.typeName === primitiveType.typeName
-      ) {
-        return arrType;
-      }
-    }
-
-    return null;
-  }
-
   private getReferenceType(
     type: ts.EntityName,
     genericTypeMap?: Map<String, ts.TypeNode>,
@@ -216,18 +209,6 @@ export class TypesResolver {
       inProgressTypes[typeNameWithGenerics] = true;
 
       const modelTypeDeclaration = this.getModelTypeDeclaration(type);
-      if (!modelTypeDeclaration) {
-        if (genericTypeMap) {
-          const typeReference: any = genericTypeMap.values().next().value;
-          return this.getReferenceType(typeReference.typeName);
-        }
-
-        return {
-          typeName: 'Generic~' + type.getText(),
-          properties: [],
-          description: ''
-        };
-      }
 
       const properties = this.getModelTypeProperties(
         modelTypeDeclaration,
@@ -359,10 +340,16 @@ export class TypesResolver {
       MetadataGenerator.current.nodes
     );
 
-    const typeName =
+    let typeName =
       type.kind === ts.SyntaxKind.Identifier
         ? (type as ts.Identifier).text
         : (type as ts.QualifiedName).right.text;
+
+    if (this.genericTypeMap && this.genericTypeMap.has(typeName)) {
+      const genericType = this.genericTypeMap.get(typeName);
+      typeName = genericType.typeName.getText();
+    }
+
     const modelTypes = statements.filter(node => {
       if (!nodeIsUsable(node)) {
         return false;
@@ -392,6 +379,21 @@ export class TypesResolver {
     node: any,
     genericTypes?: ts.TypeNode[]
   ): Property[] {
+    const genericMapping = new Map<string, ts.TypeReferenceNode>();
+    if (
+      genericTypes &&
+      node.typeParameters &&
+      node.typeParameters.length === genericTypes.length
+    ) {
+      node.typeParameters.forEach(
+        (p: { name: { text: string } }, index: number) => {
+          genericMapping.set(p.name.text, genericTypes[
+            index
+          ] as ts.TypeReferenceNode);
+        }
+      );
+    }
+
     if (
       node.kind === ts.SyntaxKind.TypeLiteral ||
       node.kind === ts.SyntaxKind.InterfaceDeclaration
@@ -459,7 +461,7 @@ export class TypesResolver {
             description: getNodeDescription(propertyDeclaration),
             name: identifier.text,
             required: !propertyDeclaration.questionToken,
-            type: new TypesResolver(aType).resolveType()
+            type: new TypesResolver(aType, genericMapping).resolveType()
           };
         });
     }
@@ -501,12 +503,12 @@ export class TypesResolver {
         genericTypes
       );
 
-      const genericTypeMap = new Map();
-      (genericTypes || []).forEach((t: any) => {
-        genericTypeMap.set(t.typeName.text, t);
-      });
+      // const genericTypeMap = new Map();
+      // (genericTypes || []).forEach((t: any) => {
+      //   genericTypeMap.set(t.typeName.text, t);
+      // });
 
-      const type = new TypesResolver(typeNode, genericTypeMap).resolveType();
+      const type = new TypesResolver(typeNode, genericMapping).resolveType();
       return {
         description,
         name,

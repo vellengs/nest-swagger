@@ -1,4 +1,4 @@
-import { Parameter } from './metadataGenerator';
+import { Parameter } from '.';
 import * as ts from 'typescript';
 export declare class ParameterGenerator {
   private readonly parameter;
@@ -9,7 +9,7 @@ export declare class ParameterGenerator {
     parameter: ts.ParameterDeclaration,
     method: string,
     path: string,
-    genericTypeMap?: Map<String, ts.TypeNode>
+    genericTypeMap?: Map<String, ts.TypeReferenceNode>
   );
   generate(): Parameter;
   private getCurrentLocation;

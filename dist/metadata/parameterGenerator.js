@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const metadataGenerator_1 = require("./metadataGenerator");
-const resolveType_1 = require("./resolveType");
+const resolveUtils_1 = require("./../utils/resolveUtils");
 const decoratorUtils_1 = require("../utils/decoratorUtils");
 const ts = require("typescript");
+const typesResolver_1 = require("./typesResolver");
+const metadataGenerator_1 = require("./metadataGenerator");
 const DescribingParameters = {
     cookie: 'cookie',
     body: 'body',
@@ -151,7 +152,7 @@ class ParameterGenerator {
         const parameterOptions = decoratorUtils_1.getDecoratorOptions(this.parameter, ident => ident.text === decoratorName) || {};
         let type = this.getValidatedType(parameter);
         if (!this.supportQueryDataType(type)) {
-            const arrayType = resolveType_1.getCommonPrimitiveAndArrayUnionType(parameter.type);
+            const arrayType = typesResolver_1.TypesResolver.getCommonPrimitiveAndArrayUnionType(parameter.type);
             if (arrayType && this.supportQueryDataType(arrayType)) {
                 type = arrayType;
             }
@@ -242,13 +243,13 @@ class ParameterGenerator {
         if (!parameter.type) {
             throw new Error(`Parameter ${parameter.name} doesn't have a valid type assigned in '${this.getCurrentLocation()}'.`);
         }
-        return resolveType_1.resolveType(parameter.type, this.genericTypeMap);
+        return new typesResolver_1.TypesResolver(parameter.type, this.genericTypeMap).resolveType();
     }
     getDefaultValue(initializer) {
         if (!initializer) {
             return;
         }
-        return resolveType_1.getLiteralValue(initializer);
+        return resolveUtils_1.getLiteralValue(initializer);
     }
 }
 exports.ParameterGenerator = ParameterGenerator;
